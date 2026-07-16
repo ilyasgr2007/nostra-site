@@ -69,13 +69,8 @@ interface ProductData {
   reviews: ProductReview[]
 }
 
-// ↓ utility that converts any remote URL to an in-project placeholder
+// ↓ passthrough now that real product images (Vercel Blob URLs) must be shown as-is
 function safeSrc(src: string, w = 800, h = 800) {
-  // If it’s an absolute URL, replace it with a local placeholder
-  if (/^https?:\/\//.test(src)) {
-    const q = encodeURIComponent("image")
-    return `/placeholder.svg?height=${h}&width=${w}&text=${q}`
-  }
   return src
 }
 

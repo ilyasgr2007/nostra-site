@@ -1,8 +1,21 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import type { ProductData, ProductColor } from "@/lib/product-utils"
-import { Loader2, Plus, Trash2, Pencil, LogOut, Upload, X } from "lucide-react"
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Pencil,
+  LogOut,
+  Upload,
+  X,
+  Search,
+  Copy,
+  Package,
+  Tag,
+  ShieldCheck,
+} from "lucide-react"
 
 type ColorRow = { name: string; hex: string; label: string }
 
@@ -27,6 +40,7 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
 
   const [products, setProducts] = useState<ProductData[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -52,6 +66,16 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
       setLoadingProducts(false)
     }
   }
+
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) return products
+    const q = searchQuery.toLowerCase()
+    return products.filter(
+      (p) => p.name.toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q),
+    )
+  }, [products, searchQuery])
+
+  const categoryCount = useMemo(() => new Set(products.map((p) => p.category).filter(Boolean)).size, [products])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -250,30 +274,71 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
     }
   }
 
+  async function handleDuplicate(product: ProductData) {
+    const newId = Date.now().toString()
+    const duplicated: ProductData = {
+      ...product,
+      id: newId,
+      name: `${product.name} (copie)`,
+      variants: product.variants.map((v) => ({ ...v, sku: `${v.sku}-COPY` })),
+    }
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(duplicated),
+      })
+      if (res.ok) {
+        await loadProducts()
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   // ---------- LOGIN SCREEN ----------
   if (!authed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black px-4">
+      <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black px-4 relative overflow-hidden">
+        <div className="absolute top-1/4 -left-20 w-72 h-72 bg-white/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 -right-20 w-72 h-72 bg-white/5 rounded-full blur-3xl" />
+
         <form
           onSubmit={handleLogin}
-          className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-lg p-8 space-y-5"
+          className="w-full max-w-sm bg-neutral-900/70 backdrop-blur-xl border border-neutral-800 rounded-2xl p-8 space-y-6 shadow-2xl relative z-10"
         >
-          <h1 className="text-xl font-semibold text-white text-center">Espace Administrateur</h1>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white to-neutral-400 flex items-center justify-center shadow-lg">
+              <ShieldCheck className="w-7 h-7 text-black" />
+            </div>
+            <div className="text-center">
+              <h1 className="text-xl font-semibold text-white tracking-tight">NOSTRA Admin</h1>
+              <p className="text-sm text-neutral-500 mt-1">Connectez-vous pour gérer votre boutique</p>
+            </div>
+          </div>
+
           <div>
-            <label className="text-sm text-neutral-400 block mb-1">Mot de passe</label>
+            <label className="text-sm text-neutral-400 block mb-1.5">Mot de passe</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-neutral-800 text-white rounded px-3 py-2 border border-neutral-700 focus:outline-none focus:border-neutral-500"
+              placeholder="••••••••"
+              className="w-full bg-neutral-800/80 text-white rounded-xl px-4 py-3 border border-neutral-700 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/10 transition"
               autoFocus
             />
           </div>
-          {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
+
+          {loginError && (
+            <p className="text-red-400 text-sm bg-red-950/50 border border-red-900/50 rounded-lg px-3 py-2">
+              {loginError}
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={loginLoading}
-            className="w-full bg-white text-black rounded py-2 font-medium hover:bg-neutral-200 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-white text-black rounded-xl py-3 font-medium hover:bg-neutral-200 transition disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
           >
             {loginLoading && <Loader2 className="w-4 h-4 animate-spin" />}
             Se connecter
@@ -285,74 +350,133 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
 
   // ---------- DASHBOARD ----------
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="border-b border-neutral-800 sticky top-0 bg-black/95 backdrop-blur z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Gestion des produits</h1>
+    <div className="min-h-screen bg-neutral-950 text-white">
+      <header className="border-b border-neutral-800/80 sticky top-0 bg-neutral-950/90 backdrop-blur-xl z-10">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-white to-neutral-400 flex items-center justify-center">
+              <Package className="w-4.5 h-4.5 text-black" />
+            </div>
+            <div>
+              <h1 className="text-base font-semibold leading-tight">NOSTRA · Dashboard</h1>
+              <p className="text-xs text-neutral-500">Gestion des produits</p>
+            </div>
+          </div>
           <div className="flex items-center gap-3">
             <button
               onClick={openNewForm}
-              className="flex items-center gap-2 bg-white text-black rounded px-4 py-2 text-sm font-medium hover:bg-neutral-200 transition"
+              className="flex items-center gap-2 bg-white text-black rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-neutral-200 transition shadow-lg"
             >
-              <Plus className="w-4 h-4" /> Ajouter un produit
+              <Plus className="w-4 h-4" /> Ajouter
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm px-3 py-2"
+              className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm px-3 py-2.5 rounded-xl hover:bg-neutral-900 transition"
             >
-              <LogOut className="w-4 h-4" /> Déconnexion
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Déconnexion</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="bg-gradient-to-br from-neutral-900 to-neutral-900/50 border border-neutral-800 rounded-2xl p-5">
+            <div className="flex items-center gap-2 text-neutral-500 text-xs mb-2">
+              <Package className="w-3.5 h-3.5" /> Produits
+            </div>
+            <p className="text-2xl font-semibold">{products.length}</p>
+          </div>
+          <div className="bg-gradient-to-br from-neutral-900 to-neutral-900/50 border border-neutral-800 rounded-2xl p-5">
+            <div className="flex items-center gap-2 text-neutral-500 text-xs mb-2">
+              <Tag className="w-3.5 h-3.5" /> Catégories
+            </div>
+            <p className="text-2xl font-semibold">{categoryCount}</p>
+          </div>
+          <div className="hidden sm:block bg-gradient-to-br from-neutral-900 to-neutral-900/50 border border-neutral-800 rounded-2xl p-5">
+            <div className="flex items-center gap-2 text-neutral-500 text-xs mb-2">
+              <ShieldCheck className="w-3.5 h-3.5" /> Statut
+            </div>
+            <p className="text-2xl font-semibold text-emerald-400">En ligne</p>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-neutral-500 absolute left-4 top-1/2 -translate-y-1/2" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Rechercher un produit ou une catégorie..."
+            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-neutral-600 focus:ring-2 focus:ring-white/5 transition"
+          />
+        </div>
+
         {loadingProducts ? (
           <div className="flex justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
           </div>
-        ) : products.length === 0 ? (
-          <p className="text-neutral-500 text-center py-20">ماكاين حتى منتج. زيد واحد جديد.</p>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-20 space-y-3">
+            <Package className="w-10 h-10 text-neutral-700 mx-auto" />
+            <p className="text-neutral-500">
+              {products.length === 0 ? "ماكاين حتى منتج. زيد واحد جديد." : "ماكاين حتى نتيجة."}
+            </p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden group"
+                className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden group hover:border-neutral-700 transition-colors"
               >
                 <div className="aspect-square bg-neutral-800 relative overflow-hidden">
                   {product.images?.[0] ? (
                     <img
                       src={product.images[0] || "/placeholder.svg"}
                       alt={product.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-neutral-600 text-sm">
                       Pas d'image
                     </div>
                   )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <div className="p-4 space-y-2">
-                  <h3 className="font-medium text-sm truncate">{product.name}</h3>
-                  <p className="text-neutral-400 text-sm">{product.price} MAD</p>
+                <div className="p-4 space-y-2.5">
+                  <div>
+                    <h3 className="font-medium text-sm truncate">{product.name}</h3>
+                    <p className="text-neutral-400 text-sm font-medium mt-0.5">{product.price} MAD</p>
+                  </div>
                   {product.category && (
-                    <span className="inline-block text-xs bg-neutral-800 text-neutral-400 rounded px-2 py-0.5">
+                    <span className="inline-block text-xs bg-neutral-800 text-neutral-300 rounded-full px-2.5 py-1">
                       {product.category}
                     </span>
                   )}
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex gap-1.5 pt-1">
                     <button
                       onClick={() => openEditForm(product)}
-                      className="flex-1 flex items-center justify-center gap-1 bg-neutral-800 hover:bg-neutral-700 rounded py-1.5 text-xs transition"
+                      title="Modifier"
+                      className="flex-1 flex items-center justify-center gap-1 bg-neutral-800 hover:bg-neutral-700 rounded-lg py-2 text-xs transition"
                     >
                       <Pencil className="w-3 h-3" /> Modifier
                     </button>
                     <button
-                      onClick={() => handleDelete(product.id)}
-                      className="flex-1 flex items-center justify-center gap-1 bg-red-950 hover:bg-red-900 text-red-400 rounded py-1.5 text-xs transition"
+                      onClick={() => handleDuplicate(product)}
+                      title="Dupliquer"
+                      className="flex items-center justify-center bg-neutral-800 hover:bg-neutral-700 rounded-lg py-2 px-2.5 text-xs transition"
                     >
-                      <Trash2 className="w-3 h-3" /> Supprimer
+                      <Copy className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(product.id)}
+                      title="Supprimer"
+                      className="flex items-center justify-center bg-red-950 hover:bg-red-900 text-red-400 rounded-lg py-2 px-2.5 text-xs transition"
+                    >
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -364,8 +488,8 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
 
       {/* ---------- ADD/EDIT MODAL ---------- */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-lg w-full max-w-2xl my-8">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-2xl my-8 shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-neutral-800">
               <h2 className="font-semibold">{editingId ? "Modifier le produit" : "Nouveau produit"}</h2>
               <button
