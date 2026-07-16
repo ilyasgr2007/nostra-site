@@ -252,7 +252,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
       return
     }
 
-    const phoneNumber = "2120696628420" // Your business WhatsApp number
+    const phoneNumber = "212631809890" // Your business WhatsApp number
     const formattedPhoneNumber = phoneNumber.startsWith("0") ? `212${phoneNumber.substring(1)}` : phoneNumber
     const colorLabel = productData.colors.find((c) => c.name === urlColor)?.label || urlColor
 
