@@ -27,7 +27,7 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { mockProducts } from "@/lib/product-utils"
+import { useProducts } from "@/lib/use-products"
 import { SizeCalculator } from "@/components/size-calculator"
 import {
   Dialog,
@@ -97,6 +97,8 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     address: "",
   })
 
+  const { products: allProducts, loading: productsLoading } = useProducts()
+
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [id])
@@ -107,7 +109,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
   // Récupération des données produit basées sur l'ID
   const getProductData = (productId: string): ProductData | null => {
-    const product = mockProducts.find((p) => p.id === productId)
+    const product = allProducts.find((p) => p.id === productId)
 
     if (!product) {
       return null
@@ -136,6 +138,14 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   }
 
   const productData = getProductData(id)
+
+  if (productsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
+        <div className="w-8 h-8 border-2 border-black dark:border-white border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   if (!productData) {
     return (

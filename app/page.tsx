@@ -9,12 +9,13 @@ import { Contact } from "@/components/contact"
 import { Footer } from "@/components/footer"
 import { BottomDecorImage } from "@/components/bottom-decor-image"
 import { SearchOverlay } from "@/components/search-overlay"
-import { mockProducts } from "@/lib/product-utils"
+import { useProducts } from "@/lib/use-products"
 import { BrandAndQualitySection } from "@/components/brand-and-quality-section"
 
 export default function HomePage() {
   const [showSearchOverlay, setShowSearchOverlay] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const { products } = useProducts()
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
@@ -34,7 +35,7 @@ export default function HomePage() {
           <About /> {/* Uncommented About component */}
         </>
       )}
-      <Products searchQuery={searchQuery} allProducts={mockProducts} />
+      <Products searchQuery={searchQuery} allProducts={products} />
       <Contact />
       {searchQuery === "" && ( // Only show if no search query
         <BrandAndQualitySection />

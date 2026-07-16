@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { mockProducts } from "@/lib/product-utils" // Import mockProducts
+import { useProducts } from "@/lib/use-products"
 
 export function About() {
   const [isVisible, setIsVisible] = useState(false)
   const [displayedProductCount, setDisplayedProductCount] = useState(6) // State to manage displayed product count
+  const { products: allProducts } = useProducts()
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -16,8 +17,8 @@ export function About() {
     return () => clearTimeout(timer)
   }, [])
 
-  // Use a subset of mockProducts or define specific products for this section
-  const products = mockProducts.slice(0, displayedProductCount) // Use displayedProductCount
+  // Use a subset of allProducts or define specific products for this section
+  const products = allProducts.slice(0, displayedProductCount) // Use displayedProductCount
 
   const handleShowMore = () => {
     setDisplayedProductCount((prevCount) => prevCount + 4) // Increase by 4 products
@@ -79,7 +80,7 @@ export function About() {
           ))}
         </div>
 
-        {displayedProductCount < mockProducts.length && ( // Conditionally render the button
+        {displayedProductCount < allProducts.length && ( // Conditionally render the button
           <div className="text-center mt-12">
             <button
               onClick={handleShowMore} // Add onClick handler
