@@ -99,7 +99,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   }, [id])
 
   // Récupération des paramètres URL
-  const urlColor = searchParams.get("color") || "noir"
   const urlSize = searchParams.get("size") || ""
 
   // Récupération des données produit basées sur l'ID
@@ -134,6 +133,10 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
   const productData = getProductData(id)
 
+  // Couleur sélectionnée : priorité au paramètre URL, sinon la première couleur réelle du produit
+  // (on évite un "noir" codé en dur qui ne correspondait pas toujours à la casse exacte des noms de couleur)
+  const urlColor = searchParams.get("color") || productData?.colors[0]?.name || ""
+
   if (productsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
@@ -159,7 +162,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const currentImages = (
     currentVariant?.images ||
     productData.variants.filter((v) => v.color === urlColor)[0]?.images ||
-    productData.variants.filter((v) => v.color === "noir")[0]?.images ||
+    productData.variants[0]?.images ||
     []
   ).map((src) => safeSrc(src))
 
