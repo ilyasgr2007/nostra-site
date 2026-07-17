@@ -52,7 +52,7 @@ async function ensureInitialized() {
 export async function getAllProducts(): Promise<ProductData[]> {
   await ensureInitialized()
   const sql = getSql()
-  const rows = await sql`SELECT data FROM products ORDER BY (data->>'id')::int NULLS LAST, id ASC`
+  const rows = await sql`SELECT data FROM products ORDER BY created_at ASC`
   return rows.map((row: any) => row.data as ProductData)
 }
 

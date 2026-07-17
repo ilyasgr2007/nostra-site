@@ -58,6 +58,10 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
     setLoadingProducts(true)
     try {
       const res = await fetch("/api/products")
+      if (!res.ok) {
+        console.error("Failed to load products, keeping previous list")
+        return
+      }
       const data = await res.json()
       setProducts(data.products || [])
     } catch (e) {
@@ -143,14 +147,46 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
     setShowForm(true)
   }
 
+  // Redimensionne/compresse une image côté navigateur avant l'envoi,
+  // pour que le site reste rapide même avec des photos prises au téléphone.
+  function compressImage(file: File, maxWidth = 1600, quality = 0.82): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image()
+      const reader = new FileReader()
+      reader.onload = () => {
+        img.onload = () => {
+          const scale = Math.min(1, maxWidth / img.width)
+          const canvas = document.createElement("canvas")
+          canvas.width = img.width * scale
+          canvas.height = img.height * scale
+          const ctx = canvas.getContext("2d")
+          if (!ctx) return reject(new Error("Canvas not supported"))
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Compression failed"))), "image/jpeg", quality)
+        }
+        img.onerror = reject
+        img.src = reader.result as string
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files
     if (!files || files.length === 0) return
     setUploading(true)
     try {
       for (const file of Array.from(files)) {
+        let uploadBlob: Blob = file
+        try {
+          uploadBlob = await compressImage(file)
+        } catch {
+          // If compression fails for any reason, fall back to the original file
+          uploadBlob = file
+        }
         const formData = new FormData()
-        formData.append("file", file)
+        formData.append("file", uploadBlob, file.name.replace(/\.[^/.]+$/, ".jpg"))
         const res = await fetch("/api/upload", { method: "POST", body: formData })
         if (res.ok) {
           const data = await res.json()

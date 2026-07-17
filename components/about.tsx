@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import Image from "next/image"
 import { useProducts } from "@/lib/use-products"
 
 export function About() {
@@ -54,10 +55,13 @@ export function About() {
             >
               <div className="group cursor-pointer">
                 <div className="aspect-[3/4] overflow-hidden bg-gray-50 relative">
-                  <img
+                  <Image
                     src={product.images[0] || "/placeholder.svg"} // Use first image from product data
                     alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    loading={index < 3 ? "eager" : "lazy"}
+                    className="object-cover group-hover:scale-110 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
                   <div className="absolute top-4 right-4 w-8 h-8 bg-black/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">

@@ -513,6 +513,8 @@ Merci!
                   src={currentImages[selectedImage] || "/placeholder.svg"}
                   alt={`${productData.name} - ${productData.colors.find((c) => c.name === urlColor)?.label} ${urlSize}`}
                   fill
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                   className="object-cover transition-opacity duration-300"
                 />
               )}
@@ -568,7 +570,13 @@ Merci!
                         : "border-gray-200 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-500"
                     }`}
                   >
-                    <Image src={image || "/placeholder.svg"} alt={`Vue ${index + 1}`} fill className="object-cover" />
+                    <Image
+                      src={image || "/placeholder.svg"}
+                      alt={`Vue ${index + 1}`}
+                      fill
+                      sizes="150px"
+                      className="object-cover"
+                    />
                   </button>
                 ))}
               </div>
