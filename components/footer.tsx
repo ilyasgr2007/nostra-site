@@ -33,7 +33,7 @@ export function Footer() {
             <h3 className="font-semibold mb-4">Navigation</h3>
             <ul className="space-y-2 text-gray-400">
               <li>
-                <Link href="#about" className="hover:text-white transition-colors">
+                <Link href="#collection" className="hover:text-white transition-colors">
                   À propos
                 </Link>
               </li>

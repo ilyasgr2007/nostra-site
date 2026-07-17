@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { useProducts } from "@/lib/use-products"
+import { useWishlist } from "@/lib/use-wishlist"
 import { SizeCalculator } from "@/components/size-calculator"
 import {
   Dialog,
@@ -93,6 +94,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   })
 
   const { products: allProducts, loading: productsLoading } = useProducts()
+  const { isWishlisted, toggleWishlist } = useWishlist()
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -463,9 +465,10 @@ Merci!
               variant="ghost"
               size="icon"
               className="hover:bg-gray-100 dark:hover:bg-gray-900"
-              title="Ajouter aux favoris"
+              title={isWishlisted(id) ? "Retirer des favoris" : "Ajouter aux favoris"}
+              onClick={() => toggleWishlist(id)}
             >
-              <Heart className="w-5 h-5" />
+              <Heart className={`w-5 h-5 ${isWishlisted(id) ? "fill-red-500 text-red-500" : ""}`} />
             </Button>
           </div>
         </div>
