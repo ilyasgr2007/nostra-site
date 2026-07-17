@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { GoogleAnalytics } from '@/components/google-analytics'
+import { AuthProvider } from '@/components/auth-provider'
 
 export const metadata: Metadata = {
   title: 'NOSTRA',
@@ -17,9 +18,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="bg-white dark:bg-black text-black dark:text-white transition-colors duration-300">
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          {children}
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+            {children}
+          </ThemeProvider>
+        </AuthProvider>
         <GoogleAnalytics />
       </body>
     </html>

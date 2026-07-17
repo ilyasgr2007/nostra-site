@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Menu, X, Home, Shirt, Mail, Sun, Moon } from "lucide-react"
+import { Menu, X, Home, Shirt, Mail, Sun, Moon, LogIn, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
+import { useSession, signIn, signOut } from "next-auth/react"
 
 interface HeaderProps {
   onSearchClick: () => void
@@ -14,6 +15,7 @@ export function Header({ onSearchClick }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false)
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const { data: session, status } = useSession()
 
   useEffect(() => setMounted(true), [])
 
@@ -58,7 +60,7 @@ export function Header({ onSearchClick }: HeaderProps) {
             </Link>
           </nav>
 
-          {/* Desktop Icons (Search + Theme toggle) */}
+          {/* Desktop Icons (Search + Theme toggle + Auth) */}
           <div className="hidden md:flex items-center space-x-2">
             {mounted && (
               <Button
@@ -69,6 +71,33 @@ export function Header({ onSearchClick }: HeaderProps) {
                 aria-label="Basculer le mode sombre"
               >
                 {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
+            )}
+
+            {status === "authenticated" && session?.user ? (
+              <div className="flex items-center gap-2">
+                {session.user.image && (
+                  <img
+                    src={session.user.image || "/placeholder.svg"}
+                    alt={session.user.name || "Profil"}
+                    className="w-8 h-8 rounded-full"
+                  />
+                )}
+                <span className="text-sm dark:text-white max-w-[100px] truncate">
+                  {session.user.name?.split(" ")[0]}
+                </span>
+                <Button variant="ghost" size="icon" className="dark:text-white" onClick={() => signOut()} title="Se déconnecter">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 dark:text-white dark:border-neutral-700 bg-transparent"
+                onClick={() => signIn("google")}
+              >
+                <LogIn className="h-4 w-4" /> Se connecter
               </Button>
             )}
           </div>
@@ -122,6 +151,35 @@ export function Header({ onSearchClick }: HeaderProps) {
                 <Mail className="h-6 w-6" />
                 <span>Contact</span>
               </Link>
+
+              <div className="px-3 py-3 border-t dark:border-neutral-800 mt-2">
+                {status === "authenticated" && session?.user ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {session.user.image && (
+                        <img
+                          src={session.user.image || "/placeholder.svg"}
+                          alt={session.user.name || "Profil"}
+                          className="w-8 h-8 rounded-full"
+                        />
+                      )}
+                      <span className="text-sm dark:text-white truncate">{session.user.name}</span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => signOut()} className="dark:text-white">
+                      <LogOut className="h-4 w-4 mr-1" /> Sortir
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full flex items-center justify-center gap-2 dark:text-white dark:border-neutral-700 bg-transparent"
+                    onClick={() => signIn("google")}
+                  >
+                    <LogIn className="h-4 w-4" /> Se connecter avec Google
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}

@@ -32,6 +32,17 @@ async function ensureInitialized() {
     )
   `
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS customers (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      name TEXT,
+      image TEXT,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      last_login_at TIMESTAMPTZ DEFAULT now()
+    )
+  `
+
   const existing = await sql`SELECT COUNT(*)::int as count FROM products`
   const count = (existing[0] as any)?.count ?? 0
 
@@ -89,4 +100,22 @@ export async function deleteProduct(id: string): Promise<void> {
   await ensureInitialized()
   const sql = getSql()
   await sql`DELETE FROM products WHERE id = ${id}`
+}
+
+export async function upsertCustomer(customer: { email: string; name?: string | null; image?: string | null }) {
+  await ensureInitialized()
+  const sql = getSql()
+  const id = customer.email // email as stable unique id for simplicity
+  await sql`
+    INSERT INTO customers (id, email, name, image)
+    VALUES (${id}, ${customer.email}, ${customer.name || null}, ${customer.image || null})
+    ON CONFLICT (email)
+    DO UPDATE SET name = ${customer.name || null}, image = ${customer.image || null}, last_login_at = now()
+  `
+}
+
+export async function getAllCustomers() {
+  await ensureInitialized()
+  const sql = getSql()
+  return sql`SELECT id, email, name, image, created_at, last_login_at FROM customers ORDER BY created_at DESC`
 }
