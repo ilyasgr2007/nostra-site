@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import Image from "next/image"
 import { X, Minus, Plus, Trash2, MessageCircle, ShoppingBag } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -20,8 +21,22 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { toast } = useToast()
   const [showCheckoutForm, setShowCheckoutForm] = useState(false)
   const [customer, setCustomer] = useState({ name: "", phone: "", address: "" })
+  const [mounted, setMounted] = useState(false)
 
-  if (!isOpen) return null
+  useEffect(() => setMounted(true), [])
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [isOpen])
+
+  if (!isOpen || !mounted) return null
 
   function handleSendOrder(e: React.FormEvent) {
     e.preventDefault()
@@ -69,7 +84,7 @@ Merci!
     })
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[110] flex justify-end">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md bg-white dark:bg-neutral-950 h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
@@ -188,6 +203,7 @@ Merci!
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
