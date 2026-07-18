@@ -97,16 +97,18 @@ export function Header({ onSearchClick }: HeaderProps) {
 
             {status === "authenticated" && session?.user ? (
               <div className="flex items-center gap-2">
-                {session.user.image && (
-                  <img
-                    src={session.user.image || "/placeholder.svg"}
-                    alt={session.user.name || "Profil"}
-                    className="w-8 h-8 rounded-full"
-                  />
-                )}
-                <span className="text-sm dark:text-white max-w-[100px] truncate">
-                  {session.user.name?.split(" ")[0]}
-                </span>
+                <Link href="/account" className="flex items-center gap-2 hover:opacity-75 transition-opacity">
+                  {session.user.image && (
+                    <img
+                      src={session.user.image || "/placeholder.svg"}
+                      alt={session.user.name || "Profil"}
+                      className="w-8 h-8 rounded-full"
+                    />
+                  )}
+                  <span className="text-sm dark:text-white max-w-[100px] truncate">
+                    {session.user.name?.split(" ")[0]}
+                  </span>
+                </Link>
                 <Button variant="ghost" size="icon" className="dark:text-white" onClick={() => signOut()} title="Se déconnecter">
                   <LogOut className="h-4 w-4" />
                 </Button>
@@ -193,7 +195,11 @@ export function Header({ onSearchClick }: HeaderProps) {
               <div className="px-3 py-3 border-t dark:border-neutral-800 mt-2">
                 {status === "authenticated" && session?.user ? (
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <Link
+                      href="/account"
+                      className="flex items-center gap-2"
+                      onClick={() => setIsOpen(false)}
+                    >
                       {session.user.image && (
                         <img
                           src={session.user.image || "/placeholder.svg"}
@@ -202,7 +208,7 @@ export function Header({ onSearchClick }: HeaderProps) {
                         />
                       )}
                       <span className="text-sm dark:text-white truncate">{session.user.name}</span>
-                    </div>
+                    </Link>
                     <Button variant="ghost" size="sm" onClick={() => signOut()} className="dark:text-white">
                       <LogOut className="h-4 w-4 mr-1" /> Sortir
                     </Button>

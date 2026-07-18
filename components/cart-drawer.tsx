@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { X, Minus, Plus, Trash2, MessageCircle, ShoppingBag } from "lucide-react"
+import { X, Minus, Plus, Trash2, MessageCircle, ShoppingBag, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCart } from "@/lib/use-cart"
@@ -19,8 +20,10 @@ const WHATSAPP_NUMBER = "212631809890"
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { items, updateQuantity, removeItem, clearCart, totalPrice } = useCart()
   const { toast } = useToast()
+  const router = useRouter()
   const [showCheckoutForm, setShowCheckoutForm] = useState(false)
   const [customer, setCustomer] = useState({ name: "", phone: "", address: "" })
+  const [sending, setSending] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => setMounted(true), [])
@@ -38,7 +41,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
   if (!isOpen || !mounted) return null
 
-  function handleSendOrder(e: React.FormEvent) {
+  async function handleSendOrder(e: React.FormEvent) {
     e.preventDefault()
     if (!customer.name || !customer.phone || !customer.address) {
       toast({
@@ -49,15 +52,48 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       return
     }
 
-    const itemsList = items
-      .map(
-        (item, idx) =>
-          `${idx + 1}. ${item.name} — ${item.colorLabel}, taille ${item.size} — Qté: ${item.quantity} — ${item.price * item.quantity} DH`,
-      )
-      .join("\n")
+    setSending(true)
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName: customer.name,
+          customerPhone: customer.phone,
+          customerAddress: customer.address,
+          items: items.map((item) => ({
+            name: item.name,
+            colorLabel: item.colorLabel,
+            size: item.size,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          total: totalPrice,
+        }),
+      })
+      const data = await res.json()
 
-    const message = `
+      if (!res.ok) {
+        toast({
+          title: "Erreur",
+          description: data.error || "Impossible de créer la commande.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const orderId = data.order.id
+      const itemsList = items
+        .map(
+          (item, idx) =>
+            `${idx + 1}. ${item.name} — ${item.colorLabel}, taille ${item.size} — Qté: ${item.quantity} — ${item.price * item.quantity} DH`,
+        )
+        .join("\n")
+
+      const message = `
 Bonjour, je souhaite passer une commande.
+
+*Numéro de commande: ${orderId}*
 
 *Détails du client:*
 Nom: ${customer.name}
@@ -70,18 +106,28 @@ ${itemsList}
 *Total: ${totalPrice} DH*
 
 Merci!
-    `.trim()
+      `.trim()
 
-    const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`
-    window.open(whatsappLink, "_blank")
-    clearCart()
-    setShowCheckoutForm(false)
-    setCustomer({ name: "", phone: "", address: "" })
-    onClose()
-    toast({
-      title: "Commande envoyée !",
-      description: "Votre commande a été envoyée via WhatsApp. Nous vous contacterons bientôt.",
-    })
+      const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`
+      window.open(whatsappLink, "_blank")
+      clearCart()
+      setShowCheckoutForm(false)
+      setCustomer({ name: "", phone: "", address: "" })
+      onClose()
+      toast({
+        title: `Commande ${orderId} envoyée !`,
+        description: "Votre commande a été enregistrée et envoyée via WhatsApp.",
+      })
+      router.push(`/track?order=${orderId}`)
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'envoi de la commande.",
+        variant: "destructive",
+      })
+    } finally {
+      setSending(false)
+    }
   }
 
   return createPortal(
@@ -190,11 +236,12 @@ Merci!
             <div className="mt-auto space-y-2 pt-4">
               <Button
                 type="submit"
+                disabled={sending}
                 className="w-full bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
                 size="lg"
               >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Envoyer la commande
+                {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MessageCircle className="w-4 h-4 mr-2" />}
+                {sending ? "Envoi en cours..." : "Envoyer la commande"}
               </Button>
               <Button type="button" variant="ghost" className="w-full" onClick={() => setShowCheckoutForm(false)}>
                 Retour au panier

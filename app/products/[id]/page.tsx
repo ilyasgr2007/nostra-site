@@ -305,7 +305,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     setShowOrderDialog(true) // Open the dialog
   }
 
-  const sendWhatsAppOrder = () => {
+  const sendWhatsAppOrder = async () => {
     if (!currentVariant) return // Should not happen if dialog is opened correctly
 
     const { name, email, phone, address } = customerDetails
@@ -319,12 +319,43 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
       return
     }
 
+    const colorLabel = productData.colors.find((c) => c.name === urlColor)?.label || urlColor
+
+    let orderId = ""
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName: name,
+          customerPhone: phone,
+          customerAddress: address,
+          items: [
+            {
+              name: productData.name,
+              colorLabel,
+              size: urlSize,
+              quantity,
+              price: currentVariant.price,
+            },
+          ],
+          total: currentVariant.price * quantity,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        orderId = data.order.id
+      }
+    } catch (err) {
+      console.error("Failed to save order:", err)
+    }
+
     const phoneNumber = "212631809890" // Your business WhatsApp number
     const formattedPhoneNumber = phoneNumber.startsWith("0") ? `212${phoneNumber.substring(1)}` : phoneNumber
-    const colorLabel = productData.colors.find((c) => c.name === urlColor)?.label || urlColor
 
     const message = `
 Bonjour, je souhaite passer une commande.
+${orderId ? `\n*Numéro de commande: ${orderId}*` : ""}
 
 *Détails du client:*
 Nom: ${name}
@@ -350,8 +381,10 @@ Merci!
     setCustomerDetails({ name: "", email: "", phone: "", address: "" }) // Clear form
     toast({
       title: "Commande envoyée !",
-      description: "Votre commande a été envoyée via WhatsApp. Nous vous contacterons bientôt.",
-      duration: 5000,
+      description: orderId
+        ? `Commande ${orderId} envoyée via WhatsApp. Suivez-la sur la page "Suivre ma commande".`
+        : "Votre commande a été envoyée via WhatsApp. Nous vous contacterons bientôt.",
+      duration: 6000,
     })
   }
 

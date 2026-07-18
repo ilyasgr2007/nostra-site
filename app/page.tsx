@@ -7,6 +7,7 @@ import { About } from "@/components/about"
 import { Contact } from "@/components/contact"
 import { Footer } from "@/components/footer"
 import { BottomDecorImage } from "@/components/bottom-decor-image"
+import { Newsletter } from "@/components/newsletter"
 import { SearchOverlay } from "@/components/search-overlay"
 import { BrandAndQualitySection } from "@/components/brand-and-quality-section"
 
@@ -19,6 +20,7 @@ export default function HomePage() {
       <AutoSliderBanner />
       <About />
       <Contact />
+      <Newsletter />
       <BrandAndQualitySection />
       <BottomDecorImage />
       <Footer />

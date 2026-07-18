@@ -15,7 +15,13 @@ import {
   Package,
   Tag,
   ShieldCheck,
+  BarChart3,
+  ClipboardList,
+  Users,
 } from "lucide-react"
+import { StatsTab } from "@/components/admin/stats-tab"
+import { OrdersTab } from "@/components/admin/orders-tab"
+import { CustomersTab } from "@/components/admin/customers-tab"
 
 type ColorRow = { name: string; hex: string; label: string }
 
@@ -41,6 +47,7 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
   const [products, setProducts] = useState<ProductData[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState<"products" | "orders" | "customers" | "stats">("products")
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -399,12 +406,14 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={openNewForm}
-              className="flex items-center gap-2 bg-white text-black rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-neutral-200 transition shadow-lg"
-            >
-              <Plus className="w-4 h-4" /> Ajouter
-            </button>
+            {activeTab === "products" && (
+              <button
+                onClick={openNewForm}
+                className="flex items-center gap-2 bg-white text-black rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-neutral-200 transition shadow-lg"
+              >
+                <Plus className="w-4 h-4" /> Ajouter
+              </button>
+            )}
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm px-3 py-2.5 rounded-xl hover:bg-neutral-900 transition"
@@ -414,9 +423,36 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
             </button>
           </div>
         </div>
+        <div className="max-w-6xl mx-auto px-4 pb-3 flex items-center gap-2 overflow-x-auto">
+          {[
+            { key: "products", label: "Produits", icon: Package },
+            { key: "orders", label: "Commandes", icon: ClipboardList },
+            { key: "customers", label: "Clients", icon: Users },
+            { key: "stats", label: "Statistiques", icon: BarChart3 },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as typeof activeTab)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition ${
+                activeTab === tab.key
+                  ? "bg-white text-black font-medium"
+                  : "text-neutral-400 hover:text-white hover:bg-neutral-900"
+              }`}
+            >
+              <tab.icon className="w-3.5 h-3.5" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+        {activeTab === "orders" && <OrdersTab />}
+        {activeTab === "customers" && <CustomersTab />}
+        {activeTab === "stats" && <StatsTab />}
+
+        {activeTab === "products" && (
+          <>
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div className="bg-gradient-to-br from-neutral-900 to-neutral-900/50 border border-neutral-800 rounded-2xl p-5">
@@ -519,6 +555,8 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
               </div>
             ))}
           </div>
+        )}
+          </>
         )}
       </main>
 

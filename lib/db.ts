@@ -55,6 +55,28 @@ async function ensureInitialized() {
     )
   `
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS orders (
+      id TEXT PRIMARY KEY,
+      customer_email TEXT,
+      customer_name TEXT NOT NULL,
+      customer_phone TEXT NOT NULL,
+      customer_address TEXT NOT NULL,
+      items JSONB NOT NULL,
+      total NUMERIC NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now()
+    )
+  `
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+      email TEXT PRIMARY KEY,
+      subscribed_at TIMESTAMPTZ DEFAULT now()
+    )
+  `
+
   const existing = await sql`SELECT COUNT(*)::int as count FROM products`
   const count = (existing[0] as any)?.count ?? 0
 
@@ -158,4 +180,125 @@ export async function createReview(review: {
     RETURNING id, product_id, author, rating, comment, created_at
   `
   return rows[0]
+}
+
+function generateOrderId() {
+  const date = new Date()
+  const y = date.getFullYear().toString().slice(-2)
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase()
+  return `NOS-${y}${m}${d}-${rand}`
+}
+
+export interface OrderItem {
+  name: string
+  colorLabel: string
+  size: string
+  quantity: number
+  price: number
+}
+
+export async function createOrder(order: {
+  customerEmail?: string | null
+  customerName: string
+  customerPhone: string
+  customerAddress: string
+  items: OrderItem[]
+  total: number
+}) {
+  await ensureInitialized()
+  const sql = getSql()
+  const id = generateOrderId()
+  const rows = await sql`
+    INSERT INTO orders (id, customer_email, customer_name, customer_phone, customer_address, items, total, status)
+    VALUES (${id}, ${order.customerEmail || null}, ${order.customerName}, ${order.customerPhone}, ${order.customerAddress}, ${JSON.stringify(order.items)}::jsonb, ${order.total}, 'pending')
+    RETURNING *
+  `
+  return rows[0]
+}
+
+export async function getOrderById(id: string) {
+  await ensureInitialized()
+  const sql = getSql()
+  const rows = await sql`SELECT * FROM orders WHERE id = ${id}`
+  return rows[0] || null
+}
+
+export async function getAllOrders() {
+  await ensureInitialized()
+  const sql = getSql()
+  return sql`SELECT * FROM orders ORDER BY created_at DESC`
+}
+
+export async function getOrdersForCustomer(email: string) {
+  await ensureInitialized()
+  const sql = getSql()
+  return sql`SELECT * FROM orders WHERE customer_email = ${email} ORDER BY created_at DESC`
+}
+
+export async function updateOrderStatus(id: string, status: string) {
+  await ensureInitialized()
+  const sql = getSql()
+  const rows = await sql`
+    UPDATE orders SET status = ${status}, updated_at = now() WHERE id = ${id} RETURNING *
+  `
+  return rows[0] || null
+}
+
+export async function subscribeToNewsletter(email: string) {
+  await ensureInitialized()
+  const sql = getSql()
+  await sql`
+    INSERT INTO newsletter_subscribers (email) VALUES (${email})
+    ON CONFLICT (email) DO NOTHING
+  `
+}
+
+export async function getAllNewsletterSubscribers() {
+  await ensureInitialized()
+  const sql = getSql()
+  return sql`SELECT email, subscribed_at FROM newsletter_subscribers ORDER BY subscribed_at DESC`
+}
+
+export async function getStats() {
+  await ensureInitialized()
+  const sql = getSql()
+
+  const [orderStats] = await sql`
+    SELECT
+      COUNT(*)::int AS total_orders,
+      COALESCE(SUM(total), 0)::float AS total_revenue,
+      COUNT(*) FILTER (WHERE status = 'pending')::int AS pending_orders,
+      COUNT(*) FILTER (WHERE status = 'delivered')::int AS delivered_orders
+    FROM orders
+  `
+
+  const [customerCount] = await sql`SELECT COUNT(*)::int AS total_customers FROM customers`
+  const [productCount] = await sql`SELECT COUNT(*)::int AS total_products FROM products`
+
+  const topProductsRaw = await sql`
+    SELECT items FROM orders
+  `
+  const productSales: Record<string, number> = {}
+  for (const row of topProductsRaw as any[]) {
+    const items = row.items as OrderItem[]
+    for (const item of items) {
+      productSales[item.name] = (productSales[item.name] || 0) + item.quantity
+    }
+  }
+  const topProducts = Object.entries(productSales)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, quantity]) => ({ name, quantity }))
+
+  return {
+    totalOrders: orderStats?.total_orders || 0,
+    totalRevenue: orderStats?.total_revenue || 0,
+    pendingOrders: orderStats?.pending_orders || 0,
+    deliveredOrders: orderStats?.delivered_orders || 0,
+    totalCustomers: customerCount?.total_customers || 0,
+    totalProducts: productCount?.total_products || 0,
+    topProducts,
+  }
 }
