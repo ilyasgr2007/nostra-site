@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Menu, X, Home, Shirt, Mail, Sun, Moon, LogIn, LogOut } from "lucide-react"
+import { Menu, X, Home, Shirt, Mail, Sun, Moon, LogIn, LogOut, ShoppingBag, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 import { useSession, signIn, signOut } from "next-auth/react"
+import { useCart } from "@/lib/use-cart"
+import { CartDrawer } from "@/components/cart-drawer"
 
 interface HeaderProps {
   onSearchClick: () => void
@@ -16,6 +18,8 @@ export function Header({ onSearchClick }: HeaderProps) {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const { data: session, status } = useSession()
+  const { totalItems } = useCart()
+  const [isCartOpen, setIsCartOpen] = useState(false)
 
   useEffect(() => setMounted(true), [])
 
@@ -62,6 +66,23 @@ export function Header({ onSearchClick }: HeaderProps) {
 
           {/* Desktop Icons (Search + Theme toggle + Auth) */}
           <div className="hidden md:flex items-center space-x-2">
+            <Button variant="ghost" size="icon" className="dark:text-white" onClick={onSearchClick} aria-label="Rechercher">
+              <Search className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative dark:text-white"
+              onClick={() => setIsCartOpen(true)}
+              aria-label="Panier"
+            >
+              <ShoppingBag className="h-5 w-5" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 bg-black dark:bg-white text-white dark:text-black text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </Button>
             {mounted && (
               <Button
                 variant="ghost"
@@ -103,6 +124,23 @@ export function Header({ onSearchClick }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-1 md:hidden">
+            <Button variant="ghost" size="icon" className="dark:text-white" onClick={onSearchClick} aria-label="Rechercher">
+              <Search className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative dark:text-white"
+              onClick={() => setIsCartOpen(true)}
+              aria-label="Panier"
+            >
+              <ShoppingBag className="h-5 w-5" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 bg-black dark:bg-white text-white dark:text-black text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </Button>
             {mounted && (
               <Button
                 variant="ghost"
@@ -184,6 +222,7 @@ export function Header({ onSearchClick }: HeaderProps) {
           </div>
         )}
       </div>
+      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </header>
   )
 }

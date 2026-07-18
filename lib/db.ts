@@ -43,6 +43,18 @@ async function ensureInitialized() {
     )
   `
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS reviews (
+      id SERIAL PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      author TEXT NOT NULL,
+      email TEXT NOT NULL,
+      rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+      comment TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )
+  `
+
   const existing = await sql`SELECT COUNT(*)::int as count FROM products`
   const count = (existing[0] as any)?.count ?? 0
 
@@ -118,4 +130,32 @@ export async function getAllCustomers() {
   await ensureInitialized()
   const sql = getSql()
   return sql`SELECT id, email, name, image, created_at, last_login_at FROM customers ORDER BY created_at DESC`
+}
+
+export async function getReviewsForProduct(productId: string) {
+  await ensureInitialized()
+  const sql = getSql()
+  return sql`
+    SELECT id, product_id, author, rating, comment, created_at
+    FROM reviews
+    WHERE product_id = ${productId}
+    ORDER BY created_at DESC
+  `
+}
+
+export async function createReview(review: {
+  productId: string
+  author: string
+  email: string
+  rating: number
+  comment: string
+}) {
+  await ensureInitialized()
+  const sql = getSql()
+  const rows = await sql`
+    INSERT INTO reviews (product_id, author, email, rating, comment)
+    VALUES (${review.productId}, ${review.author}, ${review.email}, ${review.rating}, ${review.comment})
+    RETURNING id, product_id, author, rating, comment, created_at
+  `
+  return rows[0]
 }

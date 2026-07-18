@@ -21,6 +21,7 @@ import {
   X,
   MessageCircle,
   Ruler,
+  ShoppingBag,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -29,6 +30,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { useProducts } from "@/lib/use-products"
 import { useWishlist } from "@/lib/use-wishlist"
+import { useCart } from "@/lib/use-cart"
+import { useSession, signIn } from "next-auth/react"
 import { SizeCalculator } from "@/components/size-calculator"
 import {
   Dialog,
@@ -83,7 +86,12 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
-  const [newReview, setNewReview] = useState({ author: "", rating: 0, comment: "" })
+  const [newReview, setNewReview] = useState({ rating: 0, comment: "" })
+  const [liveReviews, setLiveReviews] = useState<
+    { id: number; author: string; rating: number; comment: string; created_at: string }[]
+  >([])
+  const [reviewsLoading, setReviewsLoading] = useState(true)
+  const [submittingReview, setSubmittingReview] = useState(false)
   const [showSizeCalculator, setShowSizeCalculator] = useState(false)
   const [showOrderDialog, setShowOrderDialog] = useState(false)
   const [customerDetails, setCustomerDetails] = useState({
@@ -95,9 +103,28 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
   const { products: allProducts, loading: productsLoading } = useProducts()
   const { isWishlisted, toggleWishlist } = useWishlist()
+  const { addItem } = useCart()
+  const { data: session } = useSession()
 
   useEffect(() => {
     window.scrollTo(0, 0)
+  }, [id])
+
+  useEffect(() => {
+    let cancelled = false
+    setReviewsLoading(true)
+    fetch(`/api/products/${id}/reviews`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setLiveReviews(data.reviews || [])
+      })
+      .catch((err) => console.error("Failed to load reviews:", err))
+      .finally(() => {
+        if (!cancelled) setReviewsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [id])
 
   // Récupération des paramètres URL
@@ -235,6 +262,36 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     setSelectedImage((prev) => (prev - 1 + currentImages.length) % currentImages.length)
   }
 
+  const handleAddToCart = () => {
+    if (!currentVariant || !urlSize) {
+      toast({
+        title: "Sélection incomplète",
+        description: "Veuillez sélectionner une taille et une couleur valides.",
+        variant: "destructive",
+        duration: 3000,
+      })
+      return
+    }
+    const colorLabel = productData.colors.find((c) => c.name === urlColor)?.label || urlColor
+    addItem({
+      productId: productData.id,
+      name: productData.name,
+      image: currentImages[0] || "/placeholder.svg",
+      color: urlColor,
+      colorLabel,
+      size: urlSize,
+      price: currentVariant.price,
+      quantity,
+      sku: currentVariant.sku,
+      stock: currentVariant.stock,
+    })
+    toast({
+      title: "Ajouté au panier",
+      description: `${productData.name} (${colorLabel}, ${urlSize}) a été ajouté à votre panier.`,
+      duration: 3000,
+    })
+  }
+
   const handleOrderViaWhatsApp = () => {
     if (!currentVariant) {
       toast({
@@ -319,26 +376,62 @@ Merci!
     },
   ]
 
-  const handleReviewSubmit = (e: React.FormEvent) => {
+  const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (newReview.author && newReview.comment && newReview.rating > 0) {
-      const newId = productData.reviews.length > 0 ? Math.max(...productData.reviews.map((r) => r.id)) + 1 : 1
-      const date = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })
-      const submittedReview = { ...newReview, id: newId, date }
-      console.log("New review submitted:", submittedReview)
+
+    if (!session?.user) {
       toast({
-        title: "Avis soumis !",
-        description: "Votre avis a été envoyé avec succès.",
-        duration: 3000,
+        title: "Connexion requise",
+        description: "Veuillez vous connecter avec Google pour laisser un avis.",
+        variant: "destructive",
+        duration: 4000,
       })
-      setNewReview({ author: "", rating: 0, comment: "" })
-    } else {
+      return
+    }
+
+    if (!newReview.comment || newReview.rating === 0) {
       toast({
         title: "Erreur de soumission",
-        description: "Veuillez remplir tous les champs et donner une note.",
+        description: "Veuillez remplir le commentaire et donner une note.",
         variant: "destructive",
         duration: 3000,
       })
+      return
+    }
+
+    setSubmittingReview(true)
+    try {
+      const res = await fetch(`/api/products/${id}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: newReview.rating, comment: newReview.comment }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setLiveReviews((prev) => [data.review, ...prev])
+        setNewReview({ rating: 0, comment: "" })
+        toast({
+          title: "Avis soumis !",
+          description: "Votre avis a été envoyé avec succès.",
+          duration: 3000,
+        })
+      } else {
+        toast({
+          title: "Erreur",
+          description: data.error || "Une erreur est survenue.",
+          variant: "destructive",
+          duration: 3000,
+        })
+      }
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'envoi de votre avis.",
+        variant: "destructive",
+        duration: 3000,
+      })
+    } finally {
+      setSubmittingReview(false)
     }
   }
 
@@ -595,10 +688,29 @@ Merci!
               <div className="flex items-center space-x-4 mb-4">
                 <span className="text-2xl font-light">{currentVariant?.price || productData.basePrice} DH</span>
                 <div className="flex items-center space-x-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-black dark:fill-white" />
-                  ))}
-                  <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">(24 avis)</span>
+                  {[...Array(5)].map((_, i) => {
+                    const avgRating =
+                      liveReviews.length > 0
+                        ? liveReviews.reduce((sum, r) => sum + r.rating, 0) / liveReviews.length
+                        : 0
+                    return (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 ${
+                          i < Math.round(avgRating)
+                            ? "fill-black text-black dark:fill-white dark:text-white"
+                            : "text-gray-300 dark:text-gray-600"
+                        }`}
+                      />
+                    )
+                  })}
+                  <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
+                    {liveReviews.length > 0
+                      ? `(${liveReviews.length} avis)`
+                      : reviewsLoading
+                        ? "..."
+                        : "(Aucun avis pour le moment)"}
+                  </span>
                 </div>
               </div>
               {/* SKU et disponibilité */}
@@ -766,6 +878,20 @@ Merci!
             <div className="space-y-3">
               <Button
                 size="lg"
+                variant="outline"
+                className="w-full border-black text-black hover:bg-gray-50 dark:border-white dark:text-white dark:hover:bg-neutral-900 bg-transparent"
+                disabled={!currentVariant || currentVariant.stock === 0 || !urlSize || isLoading}
+                onClick={handleAddToCart}
+              >
+                <ShoppingBag className="w-5 h-5 mr-2" />
+                {!urlSize
+                  ? "SÉLECTIONNEZ UNE TAILLE"
+                  : !currentVariant || currentVariant.stock === 0
+                    ? "RUPTURE DE STOCK"
+                    : "AJOUTER AU PANIER"}
+              </Button>
+              <Button
+                size="lg"
                 className="w-full bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
                 disabled={!currentVariant || currentVariant.stock === 0 || !urlSize || isLoading}
                 onClick={handleOrderViaWhatsApp}
@@ -783,8 +909,9 @@ Merci!
                   size="lg"
                   className="flex-1 bg-transparent border-gray-300 text-black hover:bg-gray-50 dark:border-gray-700 dark:text-white dark:hover:bg-gray-900"
                   disabled={isLoading}
+                  onClick={() => toggleWishlist(id)}
                 >
-                  <Heart className="w-4 h-4 mr-2" />
+                  <Heart className={`w-4 h-4 mr-2 ${isWishlisted(id) ? "fill-red-500 text-red-500" : ""}`} />
                   FAVORIS
                 </Button>
                 <Button
@@ -843,90 +970,109 @@ Merci!
           </div>
 
           {/* Existing Reviews */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-            {productData.reviews.map((review) => (
-              <Card key={review.id} className="bg-gray-50 dark:bg-gray-900 border-none shadow-sm">
-                <CardContent className="p-6">
-                  <div className="flex items-center mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-4 h-4 ${
-                          i < review.rating
-                            ? "fill-black text-black dark:fill-white dark:text-white"
-                            : "text-gray-300 dark:text-gray-600"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">{review.comment}</p>
-                  <p className="text-sm font-semibold text-black dark:text-white">{review.author}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{review.date}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {reviewsLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="w-6 h-6 border-2 border-black dark:border-white border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : liveReviews.length === 0 ? (
+            <p className="text-center text-gray-500 dark:text-gray-400 mb-12">
+              Aucun avis pour le moment. Soyez le premier à donner votre avis !
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+              {liveReviews.map((review) => (
+                <Card key={review.id} className="bg-gray-50 dark:bg-gray-900 border-none shadow-sm">
+                  <CardContent className="p-6">
+                    <div className="flex items-center mb-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-4 h-4 ${
+                            i < review.rating
+                              ? "fill-black text-black dark:fill-white dark:text-white"
+                              : "text-gray-300 dark:text-gray-600"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">{review.comment}</p>
+                    <p className="text-sm font-semibold text-black dark:text-white">{review.author}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(review.created_at).toLocaleDateString("fr-FR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
           {/* Submit New Review Form */}
           <div className="max-w-2xl mx-auto bg-gray-50 dark:bg-gray-900 p-8 shadow-lg">
             <h3 className="text-2xl font-bold mb-6 text-center">Laisser un avis</h3>
-            <form onSubmit={handleReviewSubmit} className="space-y-6">
-              <div>
-                <label
-                  htmlFor="review-author"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            {!session?.user ? (
+              <div className="text-center space-y-4">
+                <p className="text-gray-600 dark:text-gray-400">
+                  Connectez-vous avec Google pour laisser un avis sur ce produit.
+                </p>
+                <Button
+                  onClick={() => signIn("google")}
+                  className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200"
                 >
-                  Votre nom
-                </label>
-                <Input
-                  id="review-author"
-                  type="text"
-                  value={newReview.author}
-                  onChange={(e) => setNewReview({ ...newReview, author: e.target.value })}
-                  placeholder="Votre nom"
-                  className="h-12 border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-black dark:text-white"
-                  required
-                />
+                  Se connecter avec Google
+                </Button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Votre note</label>
-                <div className="flex space-x-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-8 h-8 cursor-pointer ${
-                        star <= newReview.rating
-                          ? "fill-black text-black dark:fill-white dark:text-white"
-                          : "text-gray-300 dark:text-gray-600"
-                      }`}
-                      onClick={() => setNewReview({ ...newReview, rating: star })}
-                    />
-                  ))}
+            ) : (
+              <form onSubmit={handleReviewSubmit} className="space-y-6">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Connecté en tant que <strong>{session.user.name}</strong>
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Votre note
+                  </label>
+                  <div className="flex space-x-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`w-8 h-8 cursor-pointer ${
+                          star <= newReview.rating
+                            ? "fill-black text-black dark:fill-white dark:text-white"
+                            : "text-gray-300 dark:text-gray-600"
+                        }`}
+                        onClick={() => setNewReview({ ...newReview, rating: star })}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label
-                  htmlFor="review-comment"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                <div>
+                  <label
+                    htmlFor="review-comment"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Votre commentaire
+                  </label>
+                  <Textarea
+                    id="review-comment"
+                    value={newReview.comment}
+                    onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+                    placeholder="Écrivez votre commentaire ici..."
+                    className="min-h-[120px] border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-black dark:text-white"
+                    required
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="w-full bg-black hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200 h-12"
                 >
-                  Votre commentaire
-                </label>
-                <Textarea
-                  id="review-comment"
-                  value={newReview.comment}
-                  onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
-                  placeholder="Écrivez votre commentaire ici..."
-                  className="min-h-[120px] border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-black dark:text-white"
-                  required
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full bg-black hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200 h-12"
-              >
-                Soumettre l'avis
-              </Button>
-            </form>
+                  {submittingReview ? "Envoi en cours..." : "Soumettre l'avis"}
+                </Button>
+              </form>
+            )}
           </div>
         </section>
 

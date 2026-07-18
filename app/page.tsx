@@ -3,46 +3,26 @@
 import { useState } from "react"
 import { Header } from "@/components/header"
 import { AutoSliderBanner } from "@/components/auto-slider-banner"
-import { About } from "@/components/about" // Uncommented About import
-import { Products } from "@/components/products"
+import { About } from "@/components/about"
 import { Contact } from "@/components/contact"
 import { Footer } from "@/components/footer"
 import { BottomDecorImage } from "@/components/bottom-decor-image"
 import { SearchOverlay } from "@/components/search-overlay"
-import { useProducts } from "@/lib/use-products"
 import { BrandAndQualitySection } from "@/components/brand-and-quality-section"
 
 export default function HomePage() {
   const [showSearchOverlay, setShowSearchOverlay] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const { products } = useProducts()
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query)
-    setShowSearchOverlay(false)
-    const productsSection = document.getElementById("products-section")
-    if (productsSection) {
-      productsSection.scrollIntoView({ behavior: "smooth" })
-    }
-  }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-black transition-colors duration-300">
       <Header onSearchClick={() => setShowSearchOverlay(true)} />
       <AutoSliderBanner />
-      {searchQuery === "" && (
-        <>
-          <About /> {/* Uncommented About component */}
-        </>
-      )}
-      <Products searchQuery={searchQuery} allProducts={products} />
+      <About />
       <Contact />
-      {searchQuery === "" && ( // Only show if no search query
-        <BrandAndQualitySection />
-      )}
+      <BrandAndQualitySection />
       <BottomDecorImage />
       <Footer />
-      <SearchOverlay isOpen={showSearchOverlay} onClose={() => setShowSearchOverlay(false)} onSearch={handleSearch} />
+      <SearchOverlay isOpen={showSearchOverlay} onClose={() => setShowSearchOverlay(false)} />
     </div>
   )
 }
