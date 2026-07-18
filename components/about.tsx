@@ -109,7 +109,7 @@ export function About() {
             <p className="text-gray-500 dark:text-gray-400">Aucun produit dans cette catégorie.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {products.map((product, index) => (
               <div
                 key={product.id}
