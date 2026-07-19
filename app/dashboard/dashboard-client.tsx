@@ -18,10 +18,12 @@ import {
   BarChart3,
   ClipboardList,
   Users,
+  Shield,
 } from "lucide-react"
 import { StatsTab } from "@/components/admin/stats-tab"
 import { OrdersTab } from "@/components/admin/orders-tab"
 import { CustomersTab } from "@/components/admin/customers-tab"
+import { SecurityTab } from "@/components/admin/security-tab"
 
 type ColorRow = { name: string; hex: string; label: string }
 
@@ -47,7 +49,7 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
   const [products, setProducts] = useState<ProductData[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState<"products" | "orders" | "customers" | "stats">("products")
+  const [activeTab, setActiveTab] = useState<"products" | "orders" | "customers" | "stats" | "security">("products")
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -429,6 +431,7 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
             { key: "orders", label: "Commandes", icon: ClipboardList },
             { key: "customers", label: "Clients", icon: Users },
             { key: "stats", label: "Statistiques", icon: BarChart3 },
+            { key: "security", label: "Sécurité", icon: Shield },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -450,6 +453,7 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
         {activeTab === "orders" && <OrdersTab />}
         {activeTab === "customers" && <CustomersTab />}
         {activeTab === "stats" && <StatsTab />}
+        {activeTab === "security" && <SecurityTab />}
 
         {activeTab === "products" && (
           <>

@@ -56,6 +56,16 @@ async function ensureInitialized() {
   `
 
   await sql`
+    CREATE TABLE IF NOT EXISTS admin_activity (
+      id SERIAL PRIMARY KEY,
+      action TEXT NOT NULL,
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )
+  `
+
+  await sql`
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY,
       customer_email TEXT,
@@ -301,4 +311,24 @@ export async function getStats() {
     totalProducts: productCount?.total_products || 0,
     topProducts,
   }
+}
+
+export async function logAdminActivity(action: "login" | "logout", ipAddress?: string, userAgent?: string) {
+  await ensureInitialized()
+  const sql = getSql()
+  await sql`
+    INSERT INTO admin_activity (action, ip_address, user_agent)
+    VALUES (${action}, ${ipAddress || null}, ${userAgent || null})
+  `
+}
+
+export async function getAdminActivity(limit = 50) {
+  await ensureInitialized()
+  const sql = getSql()
+  return sql`
+    SELECT id, action, ip_address, user_agent, created_at
+    FROM admin_activity
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `
 }
