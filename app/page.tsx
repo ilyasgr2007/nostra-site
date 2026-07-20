@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Header } from "@/components/header"
 import { AutoSliderBanner } from "@/components/auto-slider-banner"
 import { About } from "@/components/about"
-import { ClientKingBanner } from "@/components/client-king-banner"
 import { Contact } from "@/components/contact"
 import { Footer } from "@/components/footer"
 import { BottomDecorImage } from "@/components/bottom-decor-image"
@@ -20,7 +19,6 @@ export default function HomePage() {
       <Header onSearchClick={() => setShowSearchOverlay(true)} />
       <AutoSliderBanner />
       <About />
-      <ClientKingBanner />
       <Contact />
       <Newsletter />
       <BrandAndQualitySection />
