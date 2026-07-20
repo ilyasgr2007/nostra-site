@@ -19,6 +19,10 @@ import {
   ClipboardList,
   Users,
   Shield,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  RefreshCw,
 } from "lucide-react"
 import { StatsTab } from "@/components/admin/stats-tab"
 import { OrdersTab } from "@/components/admin/orders-tab"
@@ -45,11 +49,13 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
   const [password, setPassword] = useState("")
   const [loginError, setLoginError] = useState("")
   const [loginLoading, setLoginLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const [products, setProducts] = useState<ProductData[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<"products" | "orders" | "customers" | "stats" | "security">("products")
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -61,6 +67,21 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
 
   useEffect(() => {
     if (authed) loadProducts()
+  }, [authed])
+
+  useEffect(() => {
+    if (!authed) return
+
+    function loadPendingCount() {
+      fetch("/api/stats")
+        .then((res) => res.json())
+        .then((data) => setPendingOrdersCount(data.stats?.pendingOrders || 0))
+        .catch((err) => console.error("Failed to load pending orders count:", err))
+    }
+
+    loadPendingCount()
+    const interval = setInterval(loadPendingCount, 60000) // refresh every minute
+    return () => clearInterval(interval)
   }, [authed])
 
   async function loadProducts() {
@@ -364,14 +385,24 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
 
           <div>
             <label className="text-sm text-neutral-400 block mb-1.5">Mot de passe</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full bg-neutral-800/80 text-white rounded-xl px-4 py-3 border border-neutral-700 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/10 transition"
-              autoFocus
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-neutral-800/80 text-white rounded-xl px-4 py-3 pr-11 border border-neutral-700 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/10 transition"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {loginError && (
@@ -408,6 +439,26 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (activeTab === "products") loadProducts()
+                window.dispatchEvent(new Event("nostra-dashboard-refresh"))
+              }}
+              className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm px-3 py-2.5 rounded-xl hover:bg-neutral-900 transition"
+              title="Actualiser"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span className="hidden sm:inline">Actualiser</span>
+            </button>
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:flex items-center gap-2 text-neutral-400 hover:text-white text-sm px-3 py-2.5 rounded-xl hover:bg-neutral-900 transition"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Voir le site
+            </a>
             {activeTab === "products" && (
               <button
                 onClick={openNewForm}
@@ -436,7 +487,7 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as typeof activeTab)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition ${
+              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition ${
                 activeTab === tab.key
                   ? "bg-white text-black font-medium"
                   : "text-neutral-400 hover:text-white hover:bg-neutral-900"
@@ -444,6 +495,15 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
             >
               <tab.icon className="w-3.5 h-3.5" />
               {tab.label}
+              {tab.key === "orders" && pendingOrdersCount > 0 && (
+                <span
+                  className={`ml-0.5 text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center ${
+                    activeTab === "orders" ? "bg-black text-white" : "bg-red-500 text-white"
+                  }`}
+                >
+                  {pendingOrdersCount > 9 ? "9+" : pendingOrdersCount}
+                </span>
+              )}
             </button>
           ))}
         </div>

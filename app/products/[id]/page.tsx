@@ -22,6 +22,7 @@ import {
   MessageCircle,
   Ruler,
   ShoppingBag,
+  MapPin,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -32,6 +33,7 @@ import { useProducts } from "@/lib/use-products"
 import { useWishlist } from "@/lib/use-wishlist"
 import { useCart } from "@/lib/use-cart"
 import { useSession, signIn } from "next-auth/react"
+import { LocationPicker } from "@/components/location-picker"
 import { SizeCalculator } from "@/components/size-calculator"
 import {
   Dialog,
@@ -105,6 +107,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const { isWishlisted, toggleWishlist } = useWishlist()
   const { addItem } = useCart()
   const { data: session } = useSession()
+  const [showMapPicker, setShowMapPicker] = useState(false)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -534,13 +537,21 @@ Merci!
               <Label htmlFor="address" className="text-right">
                 Adresse
               </Label>
-              <Textarea
-                id="address"
-                value={customerDetails.address}
-                onChange={(e) => setCustomerDetails({ ...customerDetails, address: e.target.value })}
-                className="col-span-3"
-                required
-              />
+              <div className="col-span-3 space-y-1.5">
+                <Textarea
+                  id="address"
+                  value={customerDetails.address}
+                  onChange={(e) => setCustomerDetails({ ...customerDetails, address: e.target.value })}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMapPicker(true)}
+                  className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-black dark:hover:text-white transition"
+                >
+                  <MapPin className="w-3.5 h-3.5" /> Choisir sur la carte
+                </button>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -1140,6 +1151,11 @@ Merci!
           </div>
         </section>
       </div>
+      <LocationPicker
+        isOpen={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onConfirm={({ address }) => setCustomerDetails((prev) => ({ ...prev, address }))}
+      />
     </div>
   )
 }

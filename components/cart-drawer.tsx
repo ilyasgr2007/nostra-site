@@ -4,11 +4,12 @@ import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { X, Minus, Plus, Trash2, MessageCircle, ShoppingBag, Loader2 } from "lucide-react"
+import { X, Minus, Plus, Trash2, MessageCircle, ShoppingBag, Loader2, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCart } from "@/lib/use-cart"
 import { useToast } from "@/hooks/use-toast"
+import { LocationPicker } from "@/components/location-picker"
 
 interface CartDrawerProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const router = useRouter()
   const [showCheckoutForm, setShowCheckoutForm] = useState(false)
   const [customer, setCustomer] = useState({ name: "", phone: "", address: "" })
+  const [showMapPicker, setShowMapPicker] = useState(false)
   const [sending, setSending] = useState(false)
   const [mounted, setMounted] = useState(false)
 
@@ -232,6 +234,13 @@ Merci!
                 onChange={(e) => setCustomer({ ...customer, address: e.target.value })}
                 className="dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
               />
+              <button
+                type="button"
+                onClick={() => setShowMapPicker(true)}
+                className="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-500 hover:text-black dark:hover:text-white transition"
+              >
+                <MapPin className="w-3.5 h-3.5" /> Choisir sur la carte
+              </button>
             </div>
             <div className="mt-auto space-y-2 pt-4">
               <Button
@@ -250,6 +259,11 @@ Merci!
           </form>
         )}
       </div>
+      <LocationPicker
+        isOpen={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onConfirm={({ address }) => setCustomer((prev) => ({ ...prev, address }))}
+      />
     </div>,
     document.body,
   )

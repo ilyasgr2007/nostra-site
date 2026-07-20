@@ -90,37 +90,6 @@
   animation: fade-in-up 0.6s ease-out forwards;
 }
 
-/* Crown float + shine effect */
-@keyframes crown-float {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-6deg);
-  }
-  50% {
-    transform: translateY(-6px) rotate(6deg);
-  }
-}
-
-.animate-crown-float {
-  animation: crown-float 2.8s ease-in-out infinite;
-}
-
-@keyframes crown-glow {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 0px currentColor);
-    opacity: 0.85;
-  }
-  50% {
-    filter: drop-shadow(0 0 10px currentColor);
-    opacity: 1;
-  }
-}
-
-.animate-crown-glow {
-  animation: crown-glow 2.8s ease-in-out infinite;
-}
-
 /* Collapsible animations */
 @keyframes collapsible-down {
   from {

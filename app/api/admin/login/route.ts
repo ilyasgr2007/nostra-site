@@ -1,16 +1,31 @@
 import { NextResponse } from "next/server"
 import { cookies, headers } from "next/headers"
 import { logAdminActivity } from "@/lib/db"
+import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit"
 
 const ADMIN_PASSWORD = "ilyas2007"
 
 export async function POST(request: Request) {
   try {
+    const headersList = await headers()
+    const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown"
+
+    const rateLimit = checkRateLimit(ip)
+    if (!rateLimit.allowed) {
+      const minutes = Math.ceil((rateLimit.retryAfterSeconds || 0) / 60)
+      return NextResponse.json(
+        { error: `Trop de tentatives. Réessayez dans ${minutes} minute(s).` },
+        { status: 429 },
+      )
+    }
+
     const { password } = await request.json()
 
     if (password !== ADMIN_PASSWORD) {
       return NextResponse.json({ error: "Mot de passe incorrect" }, { status: 401 })
     }
+
+    resetRateLimit(ip)
 
     const cookieStore = await cookies()
     cookieStore.set("admin_session", "authenticated", {
@@ -22,8 +37,6 @@ export async function POST(request: Request) {
     })
 
     try {
-      const headersList = await headers()
-      const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown"
       const userAgent = headersList.get("user-agent") || "unknown"
       await logAdminActivity("login", ip, userAgent)
     } catch (logError) {

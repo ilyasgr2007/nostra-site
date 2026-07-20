@@ -26,11 +26,16 @@ export function SecurityTab() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/admin/activity")
-      .then((res) => res.json())
-      .then((data) => setActivity(data.activity || []))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false))
+    function loadActivity() {
+      fetch("/api/admin/activity")
+        .then((res) => res.json())
+        .then((data) => setActivity(data.activity || []))
+        .catch((err) => console.error(err))
+        .finally(() => setLoading(false))
+    }
+    loadActivity()
+    window.addEventListener("nostra-dashboard-refresh", loadActivity)
+    return () => window.removeEventListener("nostra-dashboard-refresh", loadActivity)
   }, [])
 
   if (loading) {
