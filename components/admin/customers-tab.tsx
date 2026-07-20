@@ -24,21 +24,16 @@ export function CustomersTab() {
   const [tab, setTab] = useState<"customers" | "newsletter">("customers")
 
   useEffect(() => {
-    function loadData() {
-      Promise.all([
-        fetch("/api/customers").then((res) => res.json()),
-        fetch("/api/newsletter").then((res) => res.json()),
-      ])
-        .then(([customersData, newsletterData]) => {
-          setCustomers(customersData.customers || [])
-          setSubscribers(newsletterData.subscribers || [])
-        })
-        .catch((err) => console.error(err))
-        .finally(() => setLoading(false))
-    }
-    loadData()
-    window.addEventListener("nostra-dashboard-refresh", loadData)
-    return () => window.removeEventListener("nostra-dashboard-refresh", loadData)
+    Promise.all([
+      fetch("/api/customers").then((res) => res.json()),
+      fetch("/api/newsletter").then((res) => res.json()),
+    ])
+      .then(([customersData, newsletterData]) => {
+        setCustomers(customersData.customers || [])
+        setSubscribers(newsletterData.subscribers || [])
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setLoading(false))
   }, [])
 
   if (loading) {

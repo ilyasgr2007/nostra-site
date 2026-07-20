@@ -18,16 +18,11 @@ export function StatsTab() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    function loadStats() {
-      fetch("/api/stats")
-        .then((res) => res.json())
-        .then((data) => setStats(data.stats))
-        .catch((err) => console.error(err))
-        .finally(() => setLoading(false))
-    }
-    loadStats()
-    window.addEventListener("nostra-dashboard-refresh", loadStats)
-    return () => window.removeEventListener("nostra-dashboard-refresh", loadStats)
+    fetch("/api/stats")
+      .then((res) => res.json())
+      .then((data) => setStats(data.stats))
+      .catch((err) => console.error(err))
+      .finally(() => setLoading(false))
   }, [])
 
   if (loading) {

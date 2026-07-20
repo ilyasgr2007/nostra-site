@@ -46,8 +46,6 @@ export function OrdersTab() {
 
   useEffect(() => {
     loadOrders()
-    window.addEventListener("nostra-dashboard-refresh", loadOrders)
-    return () => window.removeEventListener("nostra-dashboard-refresh", loadOrders)
   }, [])
 
   async function loadOrders() {
