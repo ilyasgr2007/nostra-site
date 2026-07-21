@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, use } from "react"
+import { createPortal } from "react-dom"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -35,14 +36,6 @@ import { useCart } from "@/lib/use-cart"
 import { useSession, signIn } from "next-auth/react"
 import { LocationPicker } from "@/components/location-picker"
 import { SizeCalculator } from "@/components/size-calculator"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 
 // Types pour les variantes
@@ -516,87 +509,93 @@ Merci!
 
       {/* AI Assistant */}
       <SizeCalculator isOpen={showSizeCalculator} onClose={() => setShowSizeCalculator(false)} />
-      <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Confirmer votre commande</DialogTitle>
-            <DialogDescription>
-              Veuillez remplir vos coordonnées pour finaliser la commande via WhatsApp.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nom
-              </Label>
-              <Input
-                id="name"
-                value={customerDetails.name}
-                onChange={(e) => setCustomerDetails({ ...customerDetails, name: e.target.value })}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={customerDetails.email}
-                onChange={(e) => setCustomerDetails({ ...customerDetails, email: e.target.value })}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
-                Téléphone
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={customerDetails.phone}
-                onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="address" className="text-right">
-                Adresse
-              </Label>
-              <div className="col-span-3 space-y-1.5">
-                <Textarea
-                  id="address"
-                  value={customerDetails.address}
-                  onChange={(e) => setCustomerDetails({ ...customerDetails, address: e.target.value })}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowMapPicker(true)}
-                  className={`flex items-center justify-center gap-1.5 text-sm rounded-md py-2 px-3 border w-full transition ${
-                    location
-                      ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
-                      : "border-dashed border-neutral-400 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:border-black dark:hover:border-white"
-                  }`}
-                >
-                  <MapPin className="w-3.5 h-3.5" />
-                  {location ? "Position confirmée · Modifier" : "Choisir ma position sur la carte (obligatoire)"}
-                </button>
+
+      {showOrderDialog &&
+        typeof window !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-neutral-950 rounded-lg shadow-2xl w-full max-w-[425px] max-h-[90vh] overflow-y-auto p-6">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold dark:text-white">Confirmer votre commande</h2>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                  Veuillez remplir vos coordonnées pour finaliser la commande via WhatsApp.
+                </p>
+              </div>
+              <div className="grid gap-4 py-2">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Nom
+                  </Label>
+                  <Input
+                    id="name"
+                    value={customerDetails.name}
+                    onChange={(e) => setCustomerDetails({ ...customerDetails, name: e.target.value })}
+                    className="col-span-3"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="email" className="text-right">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={customerDetails.email}
+                    onChange={(e) => setCustomerDetails({ ...customerDetails, email: e.target.value })}
+                    className="col-span-3"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="phone" className="text-right">
+                    Téléphone
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={customerDetails.phone}
+                    onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
+                    className="col-span-3"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="address" className="text-right">
+                    Adresse
+                  </Label>
+                  <div className="col-span-3 space-y-1.5">
+                    <Textarea
+                      id="address"
+                      value={customerDetails.address}
+                      onChange={(e) => setCustomerDetails({ ...customerDetails, address: e.target.value })}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowMapPicker(true)}
+                      className={`flex items-center justify-center gap-1.5 text-sm rounded-md py-2 px-3 border w-full transition ${
+                        location
+                          ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
+                          : "border-dashed border-neutral-400 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:border-black dark:hover:border-white"
+                      }`}
+                    >
+                      <MapPin className="w-3.5 h-3.5" />
+                      {location ? "Position confirmée · Modifier" : "Choisir ma position sur la carte (obligatoire)"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <Button variant="outline" onClick={() => setShowOrderDialog(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={sendWhatsAppOrder}>Envoyer la commande</Button>
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowOrderDialog(false)}>
-              Annuler
-            </Button>
-            <Button onClick={sendWhatsAppOrder}>Envoyer la commande</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>,
+          document.body,
+        )}
 
       {/* Header */}
       <header className="border-b border-black dark:border-white relative z-50 bg-white/90 dark:bg-black/90 backdrop-blur-md sticky top-0">
