@@ -517,7 +517,15 @@ Merci!
       {/* AI Assistant */}
       <SizeCalculator isOpen={showSizeCalculator} onClose={() => setShowSizeCalculator(false)} />
       <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent
+          className="sm:max-w-[425px]"
+          onPointerDownOutside={(e) => {
+            if (showMapPicker) e.preventDefault()
+          }}
+          onInteractOutside={(e) => {
+            if (showMapPicker) e.preventDefault()
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Confirmer votre commande</DialogTitle>
             <DialogDescription>

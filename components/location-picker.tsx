@@ -2,6 +2,7 @@
 
 import "leaflet/dist/leaflet.css"
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { X, MapPin, Loader2, Locate } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -22,6 +23,12 @@ export function LocationPicker({ isOpen, onClose, onConfirm }: LocationPickerPro
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [loadingAddress, setLoadingAddress] = useState(false)
   const [locating, setLocating] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searching, setSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState<{ display_name: string; lat: string; lon: string }[]>([])
+
+  useEffect(() => setMounted(true), [])
 
   useEffect(() => {
     if (!isOpen || !mapContainerRef.current) return
@@ -41,10 +48,12 @@ export function LocationPicker({ isOpen, onClose, onConfirm }: LocationPickerPro
 
       if (cancelled || !mapContainerRef.current) return
 
-      const map = L.map(mapContainerRef.current).setView(DEFAULT_CENTER, 12)
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors",
-        maxZoom: 19,
+      const map = L.map(mapContainerRef.current, { zoomControl: true }).setView(DEFAULT_CENTER, 13)
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        maxZoom: 20,
+        subdomains: "abcd",
       }).addTo(map)
 
       const marker = L.marker(DEFAULT_CENTER, { draggable: true }).addTo(map)
@@ -99,6 +108,39 @@ export function LocationPicker({ isOpen, onClose, onConfirm }: LocationPickerPro
     }
   }, [isOpen])
 
+  async function handleSearch(query: string) {
+    if (!query.trim()) {
+      setSearchResults([])
+      return
+    }
+    setSearching(true)
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ma`,
+        { headers: { Accept: "application/json" } },
+      )
+      const data = await res.json()
+      setSearchResults(data || [])
+    } catch {
+      setSearchResults([])
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  function handleSelectSearchResult(result: { display_name: string; lat: string; lon: string }) {
+    const lat = Number.parseFloat(result.lat)
+    const lng = Number.parseFloat(result.lon)
+    if (mapRef.current && markerRef.current) {
+      mapRef.current.setView([lat, lng], 16)
+      markerRef.current.setLatLng([lat, lng])
+      setCoords({ lat, lng })
+      setAddress(result.display_name)
+    }
+    setSearchResults([])
+    setSearchQuery(result.display_name)
+  }
+
   function handleUseMyLocation() {
     if (!navigator.geolocation) return
     setLocating(true)
@@ -126,9 +168,9 @@ export function LocationPicker({ isOpen, onClose, onConfirm }: LocationPickerPro
     )
   }
 
-  if (!isOpen) return null
+  if (!isOpen || !mounted) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-neutral-950 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-neutral-800">
@@ -140,8 +182,38 @@ export function LocationPicker({ isOpen, onClose, onConfirm }: LocationPickerPro
           </button>
         </div>
 
-        <div className="relative">
-          <div ref={mapContainerRef} className="w-full h-72 z-0" />
+        <div className="relative px-5 pt-4">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              handleSearch(e.target.value)
+            }}
+            placeholder="Rechercher une ville, un quartier, une rue..."
+            className="w-full bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black dark:focus:border-white dark:text-white"
+          />
+          {searching && (
+            <Loader2 className="w-4 h-4 animate-spin absolute right-8 top-1/2 -translate-y-1/2 text-gray-400" />
+          )}
+          {searchResults.length > 0 && (
+            <div className="absolute left-5 right-5 top-full mt-1 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-lg shadow-lg z-[500] max-h-48 overflow-y-auto">
+              {searchResults.map((result, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleSelectSearchResult(result)}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 dark:text-white border-b border-gray-100 dark:border-neutral-800 last:border-0"
+                >
+                  {result.display_name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="relative mt-3">
+          <div ref={mapContainerRef} className="w-full h-[26rem] z-0" />
           <button
             type="button"
             onClick={handleUseMyLocation}
@@ -183,6 +255,7 @@ export function LocationPicker({ isOpen, onClose, onConfirm }: LocationPickerPro
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
