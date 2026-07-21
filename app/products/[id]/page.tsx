@@ -610,8 +610,8 @@ Merci!
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <Link href="/" className="flex items-center space-x-4">
-              <div className="text-2xl font-bold">١١١</div>
-              <div className="text-2xl font-light tracking-wider">NOSTRA</div>
+              <div className="text-2xl font-bold dark:text-white">١١١</div>
+              <div className="text-2xl font-bold tracking-wider dark:text-white">NOSTRA</div>
             </Link>
           </div>
           <nav className="hidden md:flex items-center space-x-8">
