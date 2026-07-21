@@ -66,6 +66,23 @@ async function ensureInitialized() {
   `
 
   await sql`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now()
+    )
+  `
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS promo_codes (
+      code TEXT PRIMARY KEY,
+      discount_percent INTEGER NOT NULL CHECK (discount_percent >= 1 AND discount_percent <= 100),
+      active BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )
+  `
+
+  await sql`
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY,
       customer_email TEXT,
@@ -339,4 +356,74 @@ export async function getAdminActivity(limit = 50) {
     ORDER BY created_at DESC
     LIMIT ${limit}
   `
+}
+
+// ---------- Settings (site config editable from the dashboard) ----------
+
+const DEFAULT_SETTINGS: Record<string, string> = {
+  whatsapp_number: "212631809890",
+  admin_password: "ilyas2007",
+}
+
+export async function getSetting(key: string): Promise<string> {
+  await ensureInitialized()
+  const sql = getSql()
+  const rows = await sql`SELECT value FROM settings WHERE key = ${key}`
+  if (rows.length > 0) return (rows[0] as any).value
+  return DEFAULT_SETTINGS[key] ?? ""
+}
+
+export async function setSetting(key: string, value: string) {
+  await ensureInitialized()
+  const sql = getSql()
+  await sql`
+    INSERT INTO settings (key, value)
+    VALUES (${key}, ${value})
+    ON CONFLICT (key) DO UPDATE SET value = ${value}, updated_at = now()
+  `
+}
+
+export async function getPublicSettings() {
+  const whatsappNumber = await getSetting("whatsapp_number")
+  return { whatsappNumber }
+}
+
+// ---------- Promo codes ----------
+
+export async function getAllPromoCodes() {
+  await ensureInitialized()
+  const sql = getSql()
+  return sql`SELECT code, discount_percent, active, created_at FROM promo_codes ORDER BY created_at DESC`
+}
+
+export async function createPromoCode(code: string, discountPercent: number) {
+  await ensureInitialized()
+  const sql = getSql()
+  await sql`
+    INSERT INTO promo_codes (code, discount_percent, active)
+    VALUES (${code.toUpperCase()}, ${discountPercent}, true)
+    ON CONFLICT (code) DO UPDATE SET discount_percent = ${discountPercent}, active = true
+  `
+}
+
+export async function togglePromoCode(code: string, active: boolean) {
+  await ensureInitialized()
+  const sql = getSql()
+  await sql`UPDATE promo_codes SET active = ${active} WHERE code = ${code.toUpperCase()}`
+}
+
+export async function deletePromoCode(code: string) {
+  await ensureInitialized()
+  const sql = getSql()
+  await sql`DELETE FROM promo_codes WHERE code = ${code.toUpperCase()}`
+}
+
+export async function validatePromoCode(code: string): Promise<{ valid: boolean; discountPercent?: number }> {
+  await ensureInitialized()
+  const sql = getSql()
+  const rows = await sql`
+    SELECT discount_percent FROM promo_codes WHERE code = ${code.toUpperCase()} AND active = true
+  `
+  if (rows.length === 0) return { valid: false }
+  return { valid: true, discountPercent: (rows[0] as any).discount_percent }
 }

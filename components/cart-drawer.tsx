@@ -16,8 +16,6 @@ interface CartDrawerProps {
   onClose: () => void
 }
 
-const WHATSAPP_NUMBER = "212631809890"
-
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { items, updateQuantity, removeItem, clearCart, totalPrice } = useCart()
   const { toast } = useToast()
@@ -28,8 +26,45 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const [showMapPicker, setShowMapPicker] = useState(false)
   const [sending, setSending] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [whatsappNumber, setWhatsappNumber] = useState("212631809890")
+  const [promoCode, setPromoCode] = useState("")
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null)
+  const [checkingPromo, setCheckingPromo] = useState(false)
+  const [promoError, setPromoError] = useState("")
 
-  useEffect(() => setMounted(true), [])
+  useEffect(() => {
+    setMounted(true)
+    fetch("/api/settings/public")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.whatsappNumber) setWhatsappNumber(data.whatsappNumber)
+      })
+      .catch(() => {})
+  }, [])
+
+  const discountAmount = appliedPromo ? Math.round((totalPrice * appliedPromo.discountPercent) / 100) : 0
+  const finalTotal = totalPrice - discountAmount
+
+  async function handleApplyPromo() {
+    if (!promoCode.trim()) return
+    setPromoError("")
+    setCheckingPromo(true)
+    try {
+      const res = await fetch(`/api/promo-codes/validate?code=${encodeURIComponent(promoCode.trim())}`)
+      const data = await res.json()
+      if (data.valid) {
+        setAppliedPromo({ code: promoCode.trim().toUpperCase(), discountPercent: data.discountPercent })
+        setPromoError("")
+      } else {
+        setAppliedPromo(null)
+        setPromoError("Code promo invalide ou expiré.")
+      }
+    } catch (err) {
+      setPromoError("Erreur lors de la vérification du code.")
+    } finally {
+      setCheckingPromo(false)
+    }
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -83,7 +118,8 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             quantity: item.quantity,
             price: item.price,
           })),
-          total: totalPrice,
+          total: finalTotal,
+          promoCode: appliedPromo?.code || null,
         }),
       })
       const data = await res.json()
@@ -117,18 +153,20 @@ Adresse: ${customer.address}
 
 *Panier:*
 ${itemsList}
-
-*Total: ${totalPrice} DH*
+${appliedPromo ? `\nCode promo: ${appliedPromo.code} (-${appliedPromo.discountPercent}%)` : ""}
+*Total: ${finalTotal} DH*
 
 Merci!
       `.trim()
 
-      const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`
+      const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
       window.open(whatsappLink, "_blank")
       clearCart()
       setShowCheckoutForm(false)
       setCustomer({ name: "", phone: "", address: "" })
       setLocation(null)
+      setPromoCode("")
+      setAppliedPromo(null)
       onClose()
       toast({
         title: `Commande ${orderId} envoyée !`,
@@ -206,9 +244,57 @@ Merci!
               ))}
             </div>
             <div className="px-6 py-5 border-t border-gray-100 dark:border-neutral-800 space-y-3">
+              {!appliedPromo ? (
+                <div className="flex gap-2">
+                  <Input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    placeholder="Code promo"
+                    className="dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={checkingPromo}
+                    onClick={handleApplyPromo}
+                    className="whitespace-nowrap bg-transparent"
+                  >
+                    {checkingPromo ? <Loader2 className="w-4 h-4 animate-spin" /> : "Appliquer"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-sm bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 rounded-md px-3 py-2">
+                  <span>
+                    Code <strong>{appliedPromo.code}</strong> appliqué (-{appliedPromo.discountPercent}%)
+                  </span>
+                  <button
+                    onClick={() => {
+                      setAppliedPromo(null)
+                      setPromoCode("")
+                    }}
+                    className="text-emerald-700 dark:text-emerald-400 hover:underline"
+                  >
+                    Retirer
+                  </button>
+                </div>
+              )}
+              {promoError && <p className="text-xs text-red-500">{promoError}</p>}
+
+              {appliedPromo && (
+                <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                  <span>Sous-total</span>
+                  <span>{totalPrice} DH</span>
+                </div>
+              )}
+              {appliedPromo && (
+                <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
+                  <span>Réduction</span>
+                  <span>-{discountAmount} DH</span>
+                </div>
+              )}
               <div className="flex justify-between text-base font-semibold dark:text-white">
                 <span>Total</span>
-                <span>{totalPrice} DH</span>
+                <span>{finalTotal} DH</span>
               </div>
               <Button
                 className="w-full bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"

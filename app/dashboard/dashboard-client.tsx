@@ -23,11 +23,15 @@ import {
   EyeOff,
   ExternalLink,
   RefreshCw,
+  Settings,
+  Ticket,
 } from "lucide-react"
 import { StatsTab } from "@/components/admin/stats-tab"
 import { OrdersTab } from "@/components/admin/orders-tab"
 import { CustomersTab } from "@/components/admin/customers-tab"
 import { SecurityTab } from "@/components/admin/security-tab"
+import { SettingsTab } from "@/components/admin/settings-tab"
+import { PromoCodesTab } from "@/components/admin/promo-codes-tab"
 
 type ColorRow = { name: string; hex: string; label: string }
 
@@ -54,7 +58,9 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
   const [products, setProducts] = useState<ProductData[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState<"products" | "orders" | "customers" | "stats" | "security">("products")
+  const [activeTab, setActiveTab] = useState<
+    "products" | "orders" | "customers" | "stats" | "security" | "settings" | "promo"
+  >("products")
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -481,8 +487,10 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
             { key: "products", label: "Produits", icon: Package },
             { key: "orders", label: "Commandes", icon: ClipboardList },
             { key: "customers", label: "Clients", icon: Users },
+            { key: "promo", label: "Codes Promo", icon: Ticket },
             { key: "stats", label: "Statistiques", icon: BarChart3 },
             { key: "security", label: "Sécurité", icon: Shield },
+            { key: "settings", label: "Paramètres", icon: Settings },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -512,8 +520,10 @@ export default function DashboardClient({ initialAuth }: { initialAuth: boolean 
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
         {activeTab === "orders" && <OrdersTab />}
         {activeTab === "customers" && <CustomersTab />}
+        {activeTab === "promo" && <PromoCodesTab />}
         {activeTab === "stats" && <StatsTab />}
         {activeTab === "security" && <SecurityTab />}
+        {activeTab === "settings" && <SettingsTab />}
 
         {activeTab === "products" && (
           <>

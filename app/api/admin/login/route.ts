@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies, headers } from "next/headers"
-import { logAdminActivity } from "@/lib/db"
+import { logAdminActivity, getSetting } from "@/lib/db"
 import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit"
-
-const ADMIN_PASSWORD = "ilyas2007"
 
 export async function POST(request: Request) {
   try {
@@ -20,8 +18,9 @@ export async function POST(request: Request) {
     }
 
     const { password } = await request.json()
+    const currentPassword = await getSetting("admin_password")
 
-    if (password !== ADMIN_PASSWORD) {
+    if (password !== currentPassword) {
       return NextResponse.json({ error: "Mot de passe incorrect" }, { status: 401 })
     }
 

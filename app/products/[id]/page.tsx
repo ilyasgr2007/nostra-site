@@ -101,6 +101,16 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const { addItem } = useCart()
   const { data: session } = useSession()
   const [showMapPicker, setShowMapPicker] = useState(false)
+  const [whatsappNumber, setWhatsappNumber] = useState("212631809890")
+
+  useEffect(() => {
+    fetch("/api/settings/public")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.whatsappNumber) setWhatsappNumber(data.whatsappNumber)
+      })
+      .catch(() => {})
+  }, [])
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
 
   useEffect(() => {
@@ -375,8 +385,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
       return
     }
 
-    const phoneNumber = "212631809890" // Your business WhatsApp number
-    const formattedPhoneNumber = phoneNumber.startsWith("0") ? `212${phoneNumber.substring(1)}` : phoneNumber
+    const formattedPhoneNumber = whatsappNumber.startsWith("0") ? `212${whatsappNumber.substring(1)}` : whatsappNumber
 
     const message = `
 Bonjour, je souhaite passer une commande.
