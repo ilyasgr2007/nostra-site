@@ -72,6 +72,8 @@ async function ensureInitialized() {
       customer_name TEXT NOT NULL,
       customer_phone TEXT NOT NULL,
       customer_address TEXT NOT NULL,
+      customer_lat DOUBLE PRECISION,
+      customer_lng DOUBLE PRECISION,
       items JSONB NOT NULL,
       total NUMERIC NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending',
@@ -79,6 +81,10 @@ async function ensureInitialized() {
       updated_at TIMESTAMPTZ DEFAULT now()
     )
   `
+
+  // Backfill columns for databases created before location tracking was added
+  await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_lat DOUBLE PRECISION`
+  await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_lng DOUBLE PRECISION`
 
   await sql`
     CREATE TABLE IF NOT EXISTS newsletter_subscribers (
@@ -214,6 +220,8 @@ export async function createOrder(order: {
   customerName: string
   customerPhone: string
   customerAddress: string
+  customerLat?: number | null
+  customerLng?: number | null
   items: OrderItem[]
   total: number
 }) {
@@ -221,8 +229,8 @@ export async function createOrder(order: {
   const sql = getSql()
   const id = generateOrderId()
   const rows = await sql`
-    INSERT INTO orders (id, customer_email, customer_name, customer_phone, customer_address, items, total, status)
-    VALUES (${id}, ${order.customerEmail || null}, ${order.customerName}, ${order.customerPhone}, ${order.customerAddress}, ${JSON.stringify(order.items)}::jsonb, ${order.total}, 'pending')
+    INSERT INTO orders (id, customer_email, customer_name, customer_phone, customer_address, customer_lat, customer_lng, items, total, status)
+    VALUES (${id}, ${order.customerEmail || null}, ${order.customerName}, ${order.customerPhone}, ${order.customerAddress}, ${order.customerLat ?? null}, ${order.customerLng ?? null}, ${JSON.stringify(order.items)}::jsonb, ${order.total}, 'pending')
     RETURNING *
   `
   return rows[0]

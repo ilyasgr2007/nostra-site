@@ -24,6 +24,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const router = useRouter()
   const [showCheckoutForm, setShowCheckoutForm] = useState(false)
   const [customer, setCustomer] = useState({ name: "", phone: "", address: "" })
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [showMapPicker, setShowMapPicker] = useState(false)
   const [sending, setSending] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -54,6 +55,16 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       return
     }
 
+    if (!location) {
+      toast({
+        title: "Localisation requise",
+        description: "Veuillez choisir votre position sur la carte pour confirmer la livraison.",
+        variant: "destructive",
+      })
+      setShowMapPicker(true)
+      return
+    }
+
     setSending(true)
     try {
       const res = await fetch("/api/orders", {
@@ -63,6 +74,8 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           customerName: customer.name,
           customerPhone: customer.phone,
           customerAddress: customer.address,
+          customerLat: location.lat,
+          customerLng: location.lng,
           items: items.map((item) => ({
             name: item.name,
             colorLabel: item.colorLabel,
@@ -115,6 +128,7 @@ Merci!
       clearCart()
       setShowCheckoutForm(false)
       setCustomer({ name: "", phone: "", address: "" })
+      setLocation(null)
       onClose()
       toast({
         title: `Commande ${orderId} envoyée !`,
@@ -237,9 +251,14 @@ Merci!
               <button
                 type="button"
                 onClick={() => setShowMapPicker(true)}
-                className="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-500 hover:text-black dark:hover:text-white transition"
+                className={`mt-2 w-full flex items-center justify-center gap-1.5 text-sm rounded-md py-2 border transition ${
+                  location
+                    ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
+                    : "border-dashed border-neutral-400 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:border-black dark:hover:border-white"
+                }`}
               >
-                <MapPin className="w-3.5 h-3.5" /> Choisir sur la carte
+                <MapPin className="w-4 h-4" />
+                {location ? "Position confirmée · Modifier" : "Choisir ma position sur la carte (obligatoire)"}
               </button>
             </div>
             <div className="mt-auto space-y-2 pt-4">
@@ -262,7 +281,10 @@ Merci!
       <LocationPicker
         isOpen={showMapPicker}
         onClose={() => setShowMapPicker(false)}
-        onConfirm={({ address }) => setCustomer((prev) => ({ ...prev, address }))}
+        onConfirm={({ address, lat, lng }) => {
+          setCustomer((prev) => ({ ...prev, address }))
+          setLocation({ lat, lng })
+        }}
       />
     </div>,
     document.body,

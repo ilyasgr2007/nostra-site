@@ -24,10 +24,17 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { customerName, customerPhone, customerAddress, items, total } = body
+    const { customerName, customerPhone, customerAddress, customerLat, customerLng, items, total } = body
 
     if (!customerName || !customerPhone || !customerAddress || !items || !items.length) {
       return NextResponse.json({ error: "Informations manquantes" }, { status: 400 })
+    }
+
+    if (typeof customerLat !== "number" || typeof customerLng !== "number") {
+      return NextResponse.json(
+        { error: "Veuillez choisir votre localisation sur la carte." },
+        { status: 400 },
+      )
     }
 
     const session = await auth()
@@ -38,6 +45,8 @@ export async function POST(request: Request) {
       customerName,
       customerPhone,
       customerAddress,
+      customerLat,
+      customerLng,
       items,
       total,
     })

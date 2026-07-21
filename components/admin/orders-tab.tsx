@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, Download, Package } from "lucide-react"
+import { Loader2, Download, Package, MapPin } from "lucide-react"
 
 interface OrderItem {
   name: string
@@ -17,6 +17,8 @@ interface Order {
   customer_phone: string
   customer_address: string
   customer_email: string | null
+  customer_lat: number | null
+  customer_lng: number | null
   items: OrderItem[]
   total: number
   status: string
@@ -149,6 +151,16 @@ export function OrdersTab() {
             <div>
               <p className="text-neutral-500 text-xs">Adresse</p>
               <p className="truncate">{order.customer_address}</p>
+              {order.customer_lat != null && order.customer_lng != null && (
+                <a
+                  href={`https://www.google.com/maps?q=${order.customer_lat},${order.customer_lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-1"
+                >
+                  <MapPin className="w-3 h-3" /> Voir sur Google Maps
+                </a>
+              )}
             </div>
           </div>
 

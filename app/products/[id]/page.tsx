@@ -108,6 +108,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const { addItem } = useCart()
   const { data: session } = useSession()
   const [showMapPicker, setShowMapPicker] = useState(false)
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -322,6 +323,17 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
       return
     }
 
+    if (!location) {
+      toast({
+        title: "Localisation requise",
+        description: "Veuillez choisir votre position sur la carte pour confirmer la livraison.",
+        variant: "destructive",
+        duration: 3000,
+      })
+      setShowMapPicker(true)
+      return
+    }
+
     const colorLabel = productData.colors.find((c) => c.name === urlColor)?.label || urlColor
 
     let orderId = ""
@@ -333,6 +345,8 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
           customerName: name,
           customerPhone: phone,
           customerAddress: address,
+          customerLat: location.lat,
+          customerLng: location.lng,
           items: [
             {
               name: productData.name,
@@ -348,9 +362,24 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
       const data = await res.json()
       if (res.ok) {
         orderId = data.order.id
+      } else {
+        toast({
+          title: "Erreur",
+          description: data.error || "Impossible de créer la commande.",
+          variant: "destructive",
+          duration: 4000,
+        })
+        return
       }
     } catch (err) {
       console.error("Failed to save order:", err)
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'enregistrement de la commande.",
+        variant: "destructive",
+        duration: 4000,
+      })
+      return
     }
 
     const phoneNumber = "212631809890" // Your business WhatsApp number
@@ -382,6 +411,7 @@ Merci!
     window.open(whatsappLink, "_blank")
     setShowOrderDialog(false) // Close the dialog after sending
     setCustomerDetails({ name: "", email: "", phone: "", address: "" }) // Clear form
+    setLocation(null)
     toast({
       title: "Commande envoyée !",
       description: orderId
@@ -547,9 +577,14 @@ Merci!
                 <button
                   type="button"
                   onClick={() => setShowMapPicker(true)}
-                  className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-black dark:hover:text-white transition"
+                  className={`flex items-center justify-center gap-1.5 text-sm rounded-md py-2 px-3 border w-full transition ${
+                    location
+                      ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
+                      : "border-dashed border-neutral-400 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:border-black dark:hover:border-white"
+                  }`}
                 >
-                  <MapPin className="w-3.5 h-3.5" /> Choisir sur la carte
+                  <MapPin className="w-3.5 h-3.5" />
+                  {location ? "Position confirmée · Modifier" : "Choisir ma position sur la carte (obligatoire)"}
                 </button>
               </div>
             </div>
@@ -1154,7 +1189,10 @@ Merci!
       <LocationPicker
         isOpen={showMapPicker}
         onClose={() => setShowMapPicker(false)}
-        onConfirm={({ address }) => setCustomerDetails((prev) => ({ ...prev, address }))}
+        onConfirm={({ address, lat, lng }) => {
+          setCustomerDetails((prev) => ({ ...prev, address }))
+          setLocation({ lat, lng })
+        }}
       />
     </div>
   )
